@@ -79,6 +79,15 @@ getint(va_list *ap, int lflag)
 // Main function to format and print a string.
 void printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);
 
+static int color_trans_table[8] = 
+	{0x0, 0x4, 0x2, 0xe, 0x1, 0x5, 0x3, 0x7};
+
+static int
+color_trans(int code) {
+	code %= 10;
+	return color_trans_table[code];
+}
+
 void
 vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 {
@@ -86,12 +95,54 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 	register int ch, err;
 	unsigned long long num;
 	int base, lflag, width, precision, altflag;
+	int val, BG_tmp, FG_tmp;
 	char padc;
 
 	while (1) {
 		while ((ch = *(unsigned char *) fmt++) != '%') {
 			if (ch == '\0')
 				return;
+			// Process ANSI escape sequence
+			if (ch == '\x1b') {
+				if (*fmt != '[') {
+					putch(ch, putdat);
+					continue;
+				}
+				fmt++;
+				BG_tmp = 0;
+				FG_tmp = 0;
+				while (1) {
+					ch = *fmt++;
+					if (ch < '0' || ch > '9') 
+						goto unrecognized_ansi;
+					for (val = 0; ; ++fmt) {
+						val = val * 10 + ch - '0';
+						ch = *fmt;
+						if (ch < '0' || ch > '9')
+							break;
+					}
+					if (val >= 30 && val <= 37)
+						FG_tmp = val;
+					if (val >= 40 && val <= 47)
+						BG_tmp = val;
+					if (*fmt == 'm') {
+						fmt++;
+						break;
+					}
+					if (*fmt != ';')
+						goto unrecognized_ansi;
+					fmt++;
+				}
+				if (BG_tmp)
+					set_BG_color(color_trans(BG_tmp));
+				if (FG_tmp)
+					set_FG_color(color_trans(FG_tmp));
+				continue;
+			unrecognized_ansi:
+				for ( ; fmt[-1] != '\x1b'; fmt--);
+				putch('\x1b', putdat);
+					
+			}
 			putch(ch, putdat);
 		}
 

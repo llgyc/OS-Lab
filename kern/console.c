@@ -129,6 +129,21 @@ static unsigned addr_6845;
 static uint16_t *crt_buf;
 static uint16_t crt_pos;
 
+static int BG_color = 0x0;
+static int FG_color = 0x7;
+
+void
+set_BG_color(int c)
+{
+	BG_color = c;
+}
+
+void
+set_FG_color(int c)
+{
+	FG_color = c;
+}
+
 static void
 cga_init(void)
 {
@@ -164,7 +179,7 @@ cga_putc(int c)
 {
 	// if no attribute given, then use black on white
 	if (!(c & ~0xFF))
-		c |= 0x0700;
+		c |= (BG_color << 12) | (FG_color << 8);
 
 	switch (c & 0xff) {
 	case '\b':
