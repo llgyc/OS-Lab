@@ -24,6 +24,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Display information about the stack trace", mon_backtrace }
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -57,7 +58,27 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
-	// Your code here.
+	uint32_t *ebp = (uint32_t *)read_ebp(), *eip;
+	struct Eipdebuginfo info;
+	int i;
+	
+	cprintf("Stack backtrace:\n");
+	while (ebp) {
+		cprintf("  ebp %08x  eip %08x  args", 
+			(uint32_t)ebp, eip = (uint32_t *)*(ebp + 1));
+		for (i = 0; i < 5; i++) {
+			cprintf(" %08x", *(ebp + i + 2));
+		}
+		cprintf("\n         ");
+		if (debuginfo_eip((uintptr_t)eip, &info))
+			panic("Unresolvable stab errors!");
+		cprintf("%s:%d: ", info.eip_file, info.eip_line);
+		cprintf("%.*s", info.eip_fn_namelen, info.eip_fn_name);
+		cprintf("+%d\n", (int)eip - (int)info.eip_fn_addr);
+			
+		ebp = (uint32_t *)*ebp;
+	}
+	
 	return 0;
 }
 
@@ -112,6 +133,10 @@ monitor(struct Trapframe *tf)
 {
 	char *buf;
 
+	cprintf("\x1b[31mThis \x1b[32mline \x1b[33mis \x1b[34mfor "
+			"\x1b[35mtesting \x1b[36mthe \x1b[37mcolor.\n");
+	cprintf("\x1b[33;41mThis \x1b[33;42mline \x1b[30;43mis \x1b[33;44mfor "
+			"\x1b[33;45mtesting \x1b[33;46mthe \x1b[33;47mcolor.\n\x1b[37;40m");
 	cprintf("Welcome to the JOS kernel monitor!\n");
 	cprintf("Type 'help' for a list of commands.\n");
 
