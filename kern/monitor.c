@@ -10,6 +10,7 @@
 #include <kern/console.h>
 #include <kern/monitor.h>
 #include <kern/kdebug.h>
+#include <kern/pmap.h>
 
 #define CMDBUF_SIZE	80	// enough for one VGA text line
 
@@ -24,7 +25,11 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
-	{ "backtrace", "Display information about the stack trace", mon_backtrace }
+	{ "backtrace", "Display information about the stack trace", mon_backtrace },
+	{ "showmappings", "Display physical mappings within a range", showmappings },
+	{ "changeperm", "Change permission bits on a specified page", changeperm },
+	{ "dumpmem", "Dump memory content within a range", dumpmem },
+	{ "pagestatus", "Show the allocation status of a physical page", pagestatus }
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -82,6 +87,139 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	return 0;
 }
 
+static void
+printp(pte_t *p_pte) {
+	if (*p_pte & PTE_U) cputchar('U');
+	else cputchar('-');
+	if (*p_pte & PTE_W) cputchar('W');
+	else cputchar('-');
+}
+
+int
+showmappings(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 3) {
+		cprintf("Usage: showmappings START_VA END_VA\n");
+		return 0;
+	}
+	uintptr_t start_va = strtol(argv[1], NULL, 0); 
+	uintptr_t end_va = strtol(argv[2], NULL, 0);
+	if (start_va % PGSIZE || end_va % PGSIZE) {
+		cprintf("Error: START_VA and END_VA should be page-aligned\n");
+		return 0;
+	}
+	if (start_va > end_va) {
+		cprintf("Error: START_VA should be smaller than END_VA\n");
+		return 0;
+	}
+	while (start_va <= end_va) {
+		cprintf("VA: 0x%08x ", start_va);
+		pte_t *p_pte = pgdir_walk(kern_pgdir, (void *)start_va, 0);
+		if (!p_pte || !(*p_pte & PTE_P)) 
+			cprintf("page not mapped\n");
+		else {
+			cprintf("PA: 0x%08x ", PTE_ADDR(*p_pte));
+			printp(p_pte);
+			cputchar('\n');
+		}
+		start_va += PGSIZE;
+	}
+	
+	return 0;
+}
+
+int
+changeperm(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 4) {
+		cprintf("Usage: changepermission VADDR [U|W] [0|1]\n");
+		return 0;
+	}
+	uintptr_t va = strtol(argv[1], NULL, 0); 
+	if (argv[2][0] != 'U' && argv[2][0] != 'W') {
+		cprintf("Usage: changepermission VADDR [U|W] [0|1]\n");
+		return 0;
+	}
+	if (argv[3][0] != '0' && argv[3][0] != '1') {
+		cprintf("Usage: changepermission VADDR [U|W] [0|1]\n");
+		return 0;
+	}
+	pte_t *p_pte = pgdir_walk(kern_pgdir, (void *)va, 0);
+	if (!p_pte || !(*p_pte & PTE_P)) {
+		cprintf("Error: Page not mapped\n");
+		return 0;
+	}
+	cprintf("Permission bits before operation: ");
+	printp(p_pte); cprintf("\n");
+	
+	pte_t perm;
+	if (argv[2][0] == 'U') perm = PTE_U;
+	else perm = PTE_W;
+	if (argv[3][0] == '0') *p_pte &= ~perm;
+	else *p_pte |= perm;
+	
+	cprintf("Permission bits after operation: ");
+	printp(p_pte); cprintf("\n");
+	
+	return 0;
+}
+
+int
+dumpmem(int argc, char **argv, struct Trapframe *tf) 
+{
+	if (argc != 4 || (argv[1][0] != 'P' && argv[1][0] != 'V')) {
+		cprintf("Usage: dumpmem [P|V] START_ADDR N_WORDS\n");
+		return 0;
+	}
+	uintptr_t start_va = strtol(argv[2], NULL, 0); 
+	uint32_t num = strtol(argv[3], NULL, 0);
+	if (argv[1][0] == 'P') {
+		if (PGNUM(start_va) + num >= npages) {
+			cprintf("Error: Physical address out of bound\n");
+			return 0;
+		}
+		start_va = (uintptr_t)KADDR((physaddr_t)start_va);
+	}
+	while (num--) {
+		cprintf("0x%08x: 0x", start_va);
+		for (int i = 3; i >= 0; i--) {
+			void *ptr = (void *)(start_va + i);
+			pte_t *p_pte = pgdir_walk(kern_pgdir, ptr, 0);
+			if (!p_pte || !(*p_pte & PTE_P))
+				cprintf("??");
+			else
+				cprintf("%02x", *(uint8_t *)ptr);
+		}
+		cputchar('\n');
+		start_va += 4;
+	}
+	
+	return 0;
+}
+
+int
+pagestatus(int argc, char **argv, struct Trapframe *tf)
+{
+	if (argc != 2) {
+		cprintf("Usage: pagestatus PADDR\n");
+		return 0;
+	}
+	physaddr_t pa = strtol(argv[1], NULL, 0);
+	if (pa % PGSIZE) {
+		cprintf("Error: PADDR not aligned\n");
+		return 0;
+	}
+	if (PGNUM(pa) >= npages) {
+		cprintf("Error: PADDR out of bound\n");
+		return 0;
+	}
+	if (page_status(pa))
+		cprintf("allocated\n");
+	else 
+		cprintf("free\n");
+	
+	return 0;
+}
 
 
 /***** Kernel monitor command interpreter *****/

@@ -503,6 +503,15 @@ tlb_invalidate(pde_t *pgdir, void *va)
 }
 
 
+int
+page_status(physaddr_t pa)
+{
+	struct PageInfo *pp = page_lookup(kern_pgdir, KADDR(pa), NULL), *pp2;
+	for (pp2 = page_free_list; pp2; pp2 = pp2->pp_link)
+		if (pp2 == pp) return 0;
+	return 1;
+}
+
 // --------------------------------------------------------------
 // Checking functions.
 // --------------------------------------------------------------
