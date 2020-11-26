@@ -48,11 +48,11 @@ SECTIONS
 	}
 
 	.bss : {
-                PROVIDE(edata = .);
-               *(.dynbss)
-               *(.bss .bss.*)
-               *(COMMON)
-                PROVIDE(end = .);
+		PROVIDE(edata = .);
+		*(.dynbss)
+		*(.bss .bss.*)
+		*(COMMON)
+		PROVIDE(end = .);
         }
 
 	/DISCARD/ : {

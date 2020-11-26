@@ -11,8 +11,6 @@
 void	cputchar(int c);
 int	getchar(void);
 int	iscons(int fd);
-void	set_BG_color(int c);
-void	set_FG_color(int c);
 
 // lib/printfmt.c
 void	printfmt(void (*putch)(int, void*), void *putdat, const char *fmt, ...);
