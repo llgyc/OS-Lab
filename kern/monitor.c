@@ -27,10 +27,10 @@ static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
 	{ "backtrace", "Display information about the stack trace", mon_backtrace },
-	{ "showmappings", "Display physical mappings within a range", showmappings },
-	{ "changeperm", "Change permission bits on a specified page", changeperm },
-	{ "dumpmem", "Dump memory content within a range", dumpmem },
-	{ "pagestatus", "Show the allocation status of a physical page", pagestatus }
+	{ "showmappings", "Display physical mappings within a range", mon_showmappings },
+	{ "changeperm", "Change permission bits on a specified page", mon_changeperm },
+	{ "dumpmem", "Dump memory content within a range", mon_dumpmem },
+	{ "pagestatus", "Show the allocation status of a physical page", mon_pagestatus }
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -97,7 +97,7 @@ printp(pte_t *p_pte) {
 }
 
 int
-showmappings(int argc, char **argv, struct Trapframe *tf)
+mon_showmappings(int argc, char **argv, struct Trapframe *tf)
 {
 	if (argc != 3) {
 		cprintf("Usage: showmappings START_VA END_VA\n");
@@ -130,7 +130,7 @@ showmappings(int argc, char **argv, struct Trapframe *tf)
 }
 
 int
-changeperm(int argc, char **argv, struct Trapframe *tf)
+mon_changeperm(int argc, char **argv, struct Trapframe *tf)
 {
 	if (argc != 4) {
 		cprintf("Usage: changepermission VADDR [U|W] [0|1]\n");
@@ -166,7 +166,7 @@ changeperm(int argc, char **argv, struct Trapframe *tf)
 }
 
 int
-dumpmem(int argc, char **argv, struct Trapframe *tf) 
+mon_dumpmem(int argc, char **argv, struct Trapframe *tf) 
 {
 	if (argc != 4 || (argv[1][0] != 'P' && argv[1][0] != 'V')) {
 		cprintf("Usage: dumpmem [P|V] START_ADDR N_WORDS\n");
@@ -199,7 +199,7 @@ dumpmem(int argc, char **argv, struct Trapframe *tf)
 }
 
 int
-pagestatus(int argc, char **argv, struct Trapframe *tf)
+mon_pagestatus(int argc, char **argv, struct Trapframe *tf)
 {
 	if (argc != 2) {
 		cprintf("Usage: pagestatus PADDR\n");
