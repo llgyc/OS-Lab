@@ -585,7 +585,16 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	// panic("mmio_map_region not implemented");
+	if (size == 0)
+		return (void *)base;
+	size = ROUNDUP(size, PGSIZE);
+	if (size > MMIOLIM - base)
+		panic("mmio_map_region: memory overflow\n");
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	void *ret = (void *)base;
+	base += size;
+	return ret;
 }
 
 static uintptr_t user_mem_check_addr;
