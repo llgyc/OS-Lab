@@ -30,7 +30,9 @@ static struct Command commands[] = {
 	{ "showmappings", "Display physical mappings within a range", mon_showmappings },
 	{ "changeperm", "Change permission bits on a specified page", mon_changeperm },
 	{ "dumpmem", "Dump memory content within a range", mon_dumpmem },
-	{ "pagestatus", "Show the allocation status of a physical page", mon_pagestatus }
+	{ "pagestatus", "Show the allocation status of a physical page", mon_pagestatus },
+	{ "continue", "Continue execution from current location", mon_continue },
+	{ "stepi", "Single-step one instruction", mon_stepi }
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -220,6 +222,28 @@ mon_pagestatus(int argc, char **argv, struct Trapframe *tf)
 		cprintf("free\n");
 	
 	return 0;
+}
+
+int
+mon_continue(int argc, char **argv, struct Trapframe *tf)
+{
+	if (tf == NULL) {
+		cprintf("Error: No Env has been trapped\n");
+		return 0; // stay in monitor
+	}
+	tf->tf_eflags &= ~(FL_TF);
+	return -1; // exit monitor
+}
+
+int
+mon_stepi(int argc, char **argv, struct Trapframe *tf)
+{
+	if (tf == NULL) {
+		cprintf("Error: No Env has been trapped\n");
+		return 0; // stay in monitor
+	}
+	tf->tf_eflags |= FL_TF;
+	return -1; // exit monitor
 }
 
 

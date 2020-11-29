@@ -19,5 +19,7 @@ int mon_showmappings(int argc, char **argv, struct Trapframe *tf);
 int mon_changeperm(int argc, char **argv, struct Trapframe *tf);
 int mon_dumpmem(int argc, char **argv, struct Trapframe *tf);
 int mon_pagestatus(int argc, char **argv, struct Trapframe *tf);
+int mon_continue(int argc, char **argv, struct Trapframe *tf);
+int mon_stepi(int argc, char **argv, struct Trapframe *tf);
 
 #endif	// !JOS_KERN_MONITOR_H

@@ -506,14 +506,14 @@ env_run(struct Env *e)
 
 	// LAB 3: Your code here.
 
-	if (e->env_status != ENV_RUNNABLE)
-		panic("env_run: A not runnable environment is scheduled.\n");
-	if (curenv && curenv->env_status == ENV_RUNNING) 
-		curenv->env_status = ENV_RUNNABLE;
-	curenv = e;
-	e->env_status = ENV_RUNNING;
-	e->env_runs++;
-	lcr3(PADDR(e->env_pgdir));
+	if (curenv != e) {
+		if (curenv && curenv->env_status == ENV_RUNNING) 
+			curenv->env_status = ENV_RUNNABLE;
+		curenv = e;
+		e->env_status = ENV_RUNNING;
+		e->env_runs++;
+		lcr3(PADDR(e->env_pgdir));
+	}
 	
 	env_pop_tf(&e->env_tf);
 	
