@@ -313,7 +313,8 @@ page_init(void)
 	size_t i;
 	size_t kernel_end = PADDR(boot_alloc(0)) / PGSIZE;
 	for (i = 0; i < npages; i++) {
-		if ((i == 0) || (i >= IOPHYSMEM / PGSIZE && i < kernel_end)) {
+		if ((i == 0) || (i == MPENTRY_PADDR / PGSIZE) ||
+			(i >= IOPHYSMEM / PGSIZE && i < kernel_end)) {
 			pages[i].pp_ref = 0;
 			pages[i].pp_link = NULL;
 		} else {
