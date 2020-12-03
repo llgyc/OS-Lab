@@ -179,7 +179,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 		return ret;
 	if ((uint32_t)va >= UTOP || va != ROUNDUP(va, PGSIZE))
 		return -E_INVAL;
-	if (!(perm & PTE_U || perm & PTE_P))
+	if (!((perm & PTE_U) && (perm & PTE_P)))
 		return -E_INVAL;
 	if (perm & ~PTE_SYSCALL)
 		return -E_INVAL;
