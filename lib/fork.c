@@ -131,9 +131,50 @@ fork(void)
 }
 
 // Challenge!
+static int
+sduppage(envid_t envid, unsigned pn)
+{
+	int r, perm;
+	void *addr;
+	
+	addr = (void *)(pn * PGSIZE);
+	perm = uvpt[pn] & PTE_SYSCALL;
+	if ((r = sys_page_map(0, addr, envid, addr, perm)) < 0)
+		panic("sys_page_map: %e", r);
+	return 0;
+}
+
 int
 sfork(void)
 {
-	panic("sfork not implemented");
-	return -E_INVAL;
+	envid_t envid;
+	uint8_t *addr;
+	int r;
+	extern void _pgfault_upcall(void);
+	
+	set_pgfault_handler(pgfault);
+	envid = sys_exofork();
+	if (envid < 0)
+		panic("sys_exofork: %e", envid);
+	if (envid == 0) {
+		// We're the child.
+		// The following line becomes meaningless with shared memory
+		// thisenv = &envs[ENVX(sys_getenvid())];
+		return 0;
+	}
+	
+	// We're the parent.
+	for (addr = 0; addr < (uint8_t *)(USTACKTOP - PGSIZE); addr += PGSIZE)
+		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P)
+			&& (uvpt[PGNUM(addr)] & PTE_U))
+			sduppage(envid, PGNUM(addr));
+	duppage(envid, PGNUM(USTACKTOP - PGSIZE));
+	
+	if ((r = sys_page_alloc(envid, (void *)(UXSTACKTOP - PGSIZE), PTE_U|PTE_P|PTE_W)) < 0)
+		panic("sys_page_alloc: %e", r);
+	if ((r = sys_env_set_pgfault_upcall(envid, _pgfault_upcall)) < 0)
+		panic("sys_env_set_pgfault_upcall: %e", r);
+	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)) < 0)
+		panic("sys_env_set_status: %e", r);
+	return envid;
 }

@@ -33,6 +33,7 @@ ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 			*perm_store = 0;
 		return r;
 	}
+	const volatile struct Env *thisenv = envs + ENVX(sys_getenvid());
 	if (from_env_store)
 		*from_env_store = thisenv->env_ipc_from;
 	if (perm_store)

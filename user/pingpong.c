@@ -1,5 +1,5 @@
 // Ping-pong a counter between two processes.
-// Only need to start one of these -- splits into two with fork.
+// Only need to start one of these -- splits into two with sfork.
 
 #include <inc/lib.h>
 
@@ -8,7 +8,7 @@ umain(int argc, char **argv)
 {
 	envid_t who;
 
-	if ((who = fork()) != 0) {
+	if ((who = sfork()) != 0) {
 		// get the ball rolling
 		cprintf("send 0 from %x to %x\n", sys_getenvid(), who);
 		ipc_send(who, 0, 0, 0);
