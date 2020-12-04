@@ -90,7 +90,13 @@ trap_init(void)
 	void HANDLER17();
 	void HANDLER18();
 	void HANDLER19();
+	void HANDLER32();
+	void HANDLER33();
+	void HANDLER36();
+	void HANDLER39();
+	void HANDLER46();
 	void HANDLER48();
+	void HANDLER51();
 	
 	SETGATE(idt[0], 0, GD_KT, HANDLER0, 0);
 	SETGATE(idt[1], 0, GD_KT, HANDLER1, 0);
@@ -110,7 +116,13 @@ trap_init(void)
 	SETGATE(idt[17], 0, GD_KT, HANDLER17, 0);
 	SETGATE(idt[18], 0, GD_KT, HANDLER18, 0);
 	SETGATE(idt[19], 0, GD_KT, HANDLER19, 0);
+	SETGATE(idt[32], 0, GD_KT, HANDLER32, 0);
+	SETGATE(idt[33], 0, GD_KT, HANDLER33, 0);
+	SETGATE(idt[36], 0, GD_KT, HANDLER36, 0);
+	SETGATE(idt[39], 0, GD_KT, HANDLER39, 0);
+	SETGATE(idt[46], 0, GD_KT, HANDLER46, 0);
 	SETGATE(idt[48], 0, GD_KT, HANDLER48, 3);
+	SETGATE(idt[51], 0, GD_KT, HANDLER51, 0);
 	
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -250,6 +262,11 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
+		lapic_eoi();
+		sched_yield();
+		return;
+	}
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
