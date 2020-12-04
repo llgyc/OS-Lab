@@ -64,7 +64,7 @@ duppage(envid_t envid, unsigned pn)
 	void *addr;
 	
 	// LAB 4: Your code here.
-	//panic("duppage not implemented");
+	// panic("duppage not implemented");
 	addr = (void *)(pn * PGSIZE);
 	perm = uvpt[pn] & PTE_SYSCALL;
 	if ((uvpt[pn] & PTE_W) || (uvpt[pn] & PTE_COW)) {
