@@ -67,7 +67,11 @@ duppage(envid_t envid, unsigned pn)
 	// panic("duppage not implemented");
 	addr = (void *)(pn * PGSIZE);
 	perm = uvpt[pn] & PTE_SYSCALL;
-	if ((uvpt[pn] & PTE_W) || (uvpt[pn] & PTE_COW)) {
+
+	if (uvpt[pn] & PTE_SHARE) {
+		if ((r = sys_page_map(0, addr, envid, addr, perm)) < 0)
+			panic("sys_page_map: %e", r);
+	} else if ((uvpt[pn] & PTE_W) || (uvpt[pn] & PTE_COW)) {
 		perm &= ~PTE_W;
 		perm |= PTE_COW;
 		if ((r = sys_page_map(0, addr, envid, addr, perm)) < 0)
