@@ -24,6 +24,17 @@ va_is_dirty(void *va)
 	return (uvpt[PGNUM(va)] & PTE_D) != 0;
 }
 
+uint32_t max_reserved_number(void) {
+	if (!super) return 2;
+	return 2 + ROUNDUP(super->s_nblocks, BLKBITSIZE) / BLKBITSIZE;
+}
+
+bool is_reserved(uint32_t blockno) {
+	if (blockno < max_reserved_number())
+		return 1;
+	return 0;
+}
+
 // Fault any disk block that is read in to memory by
 // loading it from disk.
 static void
@@ -64,6 +75,50 @@ bc_pgfault(struct UTrapframe *utf)
 	// in?)
 	if (bitmap && block_is_free(blockno))
 		panic("reading free block %08x\n", blockno);
+	
+	// Optional Eviction	
+	if (addr < diskaddr(max_reserved_number()))
+		return;
+	static int cached_num = 0;
+	assert(cached_num >= 0);
+	cached_num++;
+	if (cached_num <= BLKCACHESIZE)
+		return;
+	uint32_t an_option = 0;
+	uint32_t i;
+	void *iaddr;
+	for (i = max_reserved_number(); i < super->s_nblocks; i++) {
+		iaddr = diskaddr(i);
+		if (iaddr == addr)
+			continue;
+		if (!(uvpt[PGNUM(iaddr)] & PTE_P))
+			continue;
+		an_option = i;
+		if (!(uvpt[PGNUM(iaddr)] & PTE_A))
+			break;
+	}
+	if (i == super->s_nblocks)
+		i = an_option;
+	if (i == 0)
+		panic("bc_pgfault: eviction failed");
+	iaddr = diskaddr(i);
+	if (uvpt[PGNUM(iaddr)] & PTE_D)
+		flush_block(iaddr);
+	if ((r = sys_page_unmap(0, iaddr)) < 0)
+		panic("in bc_pgfault, sys_page_unmap: %e", r);
+	cached_num--;
+	
+	// Clean PTE_A bits
+	for (i = max_reserved_number(); i < super->s_nblocks; i++) {
+		iaddr = diskaddr(i);
+		if (!(uvpt[PGNUM(iaddr)] & PTE_A))
+			continue;
+		if (uvpt[PGNUM(iaddr)] & PTE_D)
+			flush_block(iaddr);
+		if ((r = sys_page_map(0, addr, 0, addr, uvpt[PGNUM(iaddr)] & PTE_SYSCALL)) < 0)
+			panic("in bc_pgfault, sys_page_map: %e", r);
+	}
+	assert(cached_num <= BLKCACHESIZE);
 }
 
 // Flush the contents of the block containing VA out to disk if
